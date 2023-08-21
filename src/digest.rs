@@ -6,23 +6,23 @@ use crate::{
 use core::num::Wrapping;
 
 pub mod sha2 {
-	use crate::c;
+    use crate::c;
 
-	pub(super) const CHAINING_WORDS: usize = 8;
+    pub(super) const CHAINING_WORDS: usize = 8;
 
-	#[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
-	extern "C" {
-	    pub(super) fn GFp_sha256_block_data_order(
-		state: &mut super::State,
-		data: *const u8,
-		num: c::size_t,
-	    );
-	    pub(super) fn GFp_sha512_block_data_order(
-		state: &mut super::State,
-		data: *const u8,
-		num: c::size_t,
-	    );
-	}
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+    extern "C" {
+        pub(super) fn GFp_sha256_block_data_order(
+            state: &mut super::State,
+            data: *const u8,
+            num: c::size_t,
+        );
+        pub(super) fn GFp_sha512_block_data_order(
+            state: &mut super::State,
+            data: *const u8,
+            num: c::size_t,
+        );
+    }
 }
 
 pub struct MyAlgorithm {
@@ -267,7 +267,7 @@ pub struct Algorithm {
 
 impl PartialEq for Algorithm {
     fn eq(&self, other: &Self) -> bool {
-	true
+        true
     }
 }
 

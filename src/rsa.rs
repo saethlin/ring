@@ -18,10 +18,7 @@
 // components.
 
 /// RSA signatures.
-use crate::{
-    arithmetic::bigint,
-    limb,
-};
+use crate::{arithmetic::bigint, limb};
 
 pub mod padding;
 

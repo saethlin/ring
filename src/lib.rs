@@ -77,18 +77,18 @@ extern crate alloc;
 mod debug;
 
 mod arithmetic;
-mod bssl;
-mod polyfill;
 mod bits;
+mod bssl;
 mod c;
-mod io;
 mod cpu;
 mod digest;
 mod endian;
 mod error;
 mod hkdf;
 mod hmac;
+mod io;
 mod limb;
+mod polyfill;
 mod rand;
 mod rsa;
 
@@ -109,7 +109,6 @@ pub static MYSHA256: MyAlgorithm = MyAlgorithm {
 
 pub static DEMO: &'static inner::MyAlgorithm = &inner::MYSHA256;
 */
-
 
 mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.
