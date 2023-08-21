@@ -5,7 +5,7 @@ use crate::{
 };
 use core::num::Wrapping;
 
-pub mod sha2 {
+mod sha2 {
     use crate::c;
 
     pub(super) const CHAINING_WORDS: usize = 8;
@@ -17,15 +17,11 @@ pub mod sha2 {
             data: *const u8,
             num: c::size_t,
         );
-        pub(super) fn GFp_sha512_block_data_order(
-            state: &mut super::State,
-            data: *const u8,
-            num: c::size_t,
-        );
     }
 }
 
 pub struct MyAlgorithm {
+    #[allow(unused)]
     block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
 }
 
@@ -43,7 +39,7 @@ pub(crate) struct BlockContext {
     completed_data_blocks: u64,
 
     /// The context's algorithm.
-    pub algorithm: &'static Algorithm,
+    algorithm: &'static Algorithm,
 }
 
 impl BlockContext {
@@ -113,23 +109,6 @@ impl BlockContext {
     }
 }
 
-/// A context for multi-step (Init-Update-Finish) digest calculations.
-///
-/// # Examples
-///
-/// ```
-/// use ring::digest;
-///
-/// let one_shot = digest::digest(&digest::SHA384, b"hello, world");
-///
-/// let mut ctx = digest::Context::new(&digest::SHA384);
-/// ctx.update(b"hello");
-/// ctx.update(b", ");
-/// ctx.update(b"world");
-/// let multi_part = ctx.finish();
-///
-/// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
-/// ```
 #[derive(Clone)]
 pub struct Context {
     block: BlockContext,
@@ -139,8 +118,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Constructs a new context.
-    pub fn new(algorithm: &'static Algorithm) -> Self {
+    fn new(algorithm: &'static Algorithm) -> Self {
         Self {
             block: BlockContext::new(algorithm),
             pending: [0u8; MAX_BLOCK_LEN],
@@ -148,7 +126,7 @@ impl Context {
         }
     }
 
-    pub(crate) fn clone_from(block: &BlockContext) -> Self {
+    fn clone_from(block: &BlockContext) -> Self {
         Self {
             block: block.clone(),
             pending: [0u8; MAX_BLOCK_LEN],
@@ -159,7 +137,7 @@ impl Context {
     /// Updates the digest with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called. It must not be called
     /// after `finish` has been called.
-    pub fn update(&mut self, data: &[u8]) {
+    fn update(&mut self, data: &[u8]) {
         let block_len = self.block.algorithm.block_len;
         if data.len() < block_len - self.num_pending {
             self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
@@ -189,7 +167,7 @@ impl Context {
     /// Finalizes the digest calculation and returns the digest value. `finish`
     /// consumes the context so it cannot be (mis-)used after `finish` has been
     /// called.
-    pub fn finish(mut self) -> Digest {
+    fn finish(mut self) -> Digest {
         let block_len = self.block.algorithm.block_len;
         self.block
             .finish(&mut self.pending[..block_len], self.num_pending)
@@ -197,30 +175,9 @@ impl Context {
 
     /// The algorithm that this context is using.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm {
+    fn algorithm(&self) -> &'static Algorithm {
         self.block.algorithm
     }
-}
-
-/// Returns the digest of `data` using the given digest algorithm.
-///
-/// # Examples:
-///
-/// ```
-/// # #[cfg(feature = "alloc")]
-/// # {
-/// use ring::{digest, test};
-/// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
-/// let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
-/// let actual = digest::digest(&digest::SHA256, b"hello, world");
-///
-/// assert_eq!(&expected, &actual.as_ref());
-/// # }
-/// ```
-pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
-    let mut ctx = Context::new(algorithm);
-    ctx.update(data);
-    ctx.finish()
 }
 
 /// A calculated digest value.
@@ -243,7 +200,7 @@ impl AsRef<[u8]> for Digest {
 /// A digest algorithm.
 pub struct Algorithm {
     /// The length of a finalized digest.
-    pub output_len: usize,
+    output_len: usize,
 
     /// The size of the chaining value of the digest function, in bytes. For
     /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
@@ -251,10 +208,10 @@ pub struct Algorithm {
     /// this is equal to the length before truncation. This is mostly helpful
     /// for determining the size of an HMAC key that is appropriate for the
     /// digest algorithm.
-    pub chaining_len: usize,
+    chaining_len: usize,
 
     /// The internal block length.
-    pub block_len: usize,
+    block_len: usize,
 
     /// The length of the length in the padding.
     len_len: usize,
@@ -275,7 +232,7 @@ impl Eq for Algorithm {}
 
 #[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
 #[repr(C)]
-pub union State {
+union State {
     as64: [Wrapping<u64>; sha2::CHAINING_WORDS],
     as32: [Wrapping<u32>; sha2::CHAINING_WORDS],
 }
@@ -289,8 +246,8 @@ union Output {
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
 /// this module.
-pub const MAX_BLOCK_LEN: usize = 1024 / 8;
+const MAX_BLOCK_LEN: usize = 1024 / 8;
 
 /// The maximum output length (`Algorithm::output_len`) of all the algorithms
 /// in this module.
-pub const MAX_OUTPUT_LEN: usize = 512 / 8;
+const MAX_OUTPUT_LEN: usize = 512 / 8;

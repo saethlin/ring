@@ -73,15 +73,15 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod bits;
-mod c;
+mod c {
+	pub(crate) type size_t = usize;
+}
+
 mod cpu;
 mod digest;
 mod endian;
 mod error;
-mod hkdf;
 mod hmac;
-mod limb;
 mod polyfill;
 mod rand;
 
