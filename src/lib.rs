@@ -1,7 +1,3 @@
-mod c {
-	pub(crate) type size_t = usize;
-}
-
 mod cpu;
 mod digest;
 mod endian;
@@ -24,18 +20,5 @@ pub static MYSHA256: MyAlgorithm = MyAlgorithm {
 pub static DEMO: &'static inner::MyAlgorithm = &inner::MYSHA256;
 */
 
-mod sealed {
-    /// Traits that are designed to only be implemented internally in *ring*.
-    //
-    // Usage:
-    // ```
-    // use crate::sealed;
-    //
-    // pub trait MyType: sealed::Sealed {
-    //     // [...]
-    // }
-    //
-    // impl sealed::Sealed for MyType {}
-    // ```
-    pub trait Sealed {}
-}
+#[no_mangle]
+static mut GFp_armcap_P: u32 = 0;
