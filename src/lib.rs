@@ -73,9 +73,6 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[macro_use]
-mod debug;
-
 mod arithmetic;
 mod bits;
 mod bssl;
@@ -86,7 +83,6 @@ mod endian;
 mod error;
 mod hkdf;
 mod hmac;
-mod io;
 mod limb;
 mod polyfill;
 mod rand;

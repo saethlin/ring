@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
-use crate::{bits, digest, error, io::der};
+use crate::{bits, digest, error};
 
 #[cfg(feature = "alloc")]
 use crate::rand;
@@ -128,30 +128,6 @@ fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
     let (digest_prefix, digest_dst) = em[3 + pad_len..].split_at_mut(pkcs1.digestinfo_prefix.len());
     digest_prefix.copy_from_slice(pkcs1.digestinfo_prefix);
     digest_dst.copy_from_slice(m_hash.as_ref());
-}
-
-macro_rules! rsa_pkcs1_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
-      $doc_str:expr ) => {
-        #[doc=$doc_str]
-        pub static $PADDING_ALGORITHM: PKCS1 = PKCS1 {
-            digest_alg: $digest_alg,
-            digestinfo_prefix: $digestinfo_prefix,
-        };
-    };
-}
-
-macro_rules! pkcs1_digestinfo_prefix {
-    ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
-      [ $( $digest_oid:expr ),* ] ) => {
-        pub static $name: [u8; 2 + 8 + $digest_oid_len] = [
-            der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
-                der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
-                    der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
-                    der::Tag::Null as u8, 0,
-                der::Tag::OctetString as u8, $digest_len,
-        ];
-    }
 }
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
@@ -428,13 +404,4 @@ fn pss_digest(
     ctx.update(m_hash.as_ref());
     ctx.update(salt);
     ctx.finish()
-}
-
-macro_rules! rsa_pss_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $doc_str:expr ) => {
-        #[doc=$doc_str]
-        pub static $PADDING_ALGORITHM: PSS = PSS {
-            digest_alg: $digest_alg,
-        };
-    };
 }
