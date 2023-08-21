@@ -50,27 +50,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
 
-    (&[X86_64, X86], "crypto/cpu-intel.c"),
-
-    (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
-    (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
-    (&[X86], "crypto/fipsmodule/bn/asm/x86-mont.pl"),
-    (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
-    (&[X86], "crypto/fipsmodule/ec/asm/ecp_nistz256-x86.pl"),
-    (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
-
-    (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
-    (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
-    (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont.pl"),
-    (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont5.pl"),
-    (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
-    (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
-    (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
-    (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
-    (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
-    (&[X86_64], SHA512_X86_64),
-    (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
-
     (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
 
@@ -93,9 +72,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
-
-const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
-const SHA512_X86_64: &str = "crypto/fipsmodule/sha/asm/sha512-x86_64.pl";
 
 const SHA256_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
 const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
@@ -131,11 +107,7 @@ const RING_INCLUDES: &[&str] =
 
 #[rustfmt::skip]
 const RING_PERL_INCLUDES: &[&str] =
-    &["crypto/perlasm/arm-xlate.pl",
-      "crypto/perlasm/x86gas.pl",
-      "crypto/perlasm/x86nasm.pl",
-      "crypto/perlasm/x86asm.pl",
-      "crypto/perlasm/x86_64-xlate.pl"];
+    &["crypto/perlasm/arm-xlate.pl"];
 
 const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
@@ -214,16 +186,9 @@ const LD_FLAGS: &[&str] = &[];
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
 const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
-    ("x86_64", Some("ios"), Some("macosx")),
-    ("x86_64", Some("macos"), Some("macosx")),
-    ("x86_64", Some(WINDOWS), Some("nasm")),
-    ("x86_64", None, Some("elf")),
     ("aarch64", Some("ios"), Some("ios64")),
     ("aarch64", Some("macos"), Some("ios64")),
     ("aarch64", None, Some("linux64")),
-    ("x86", Some(WINDOWS), Some("win32n")),
-    ("x86", Some("ios"), Some("macosx")),
-    ("x86", None, Some("elf")),
     ("arm", Some("ios"), Some("ios32")),
     ("arm", None, Some("linux32")),
     ("wasm32", None, None),
@@ -692,7 +657,6 @@ fn perlasm_src_dsts(
                 ))
             }
         };
-        maybe_synthesize(SHA512_X86_64, SHA256_X86_64);
         maybe_synthesize(SHA512_ARMV8, SHA256_ARMV8);
     }
 
