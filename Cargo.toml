@@ -299,6 +299,7 @@ all-features = true
 
 [lib]
 name = "ring"
+crate-type = ["cdylib"]
 
 [dependencies]
 untrusted = { version = "0.7.1" }
@@ -343,14 +344,6 @@ wasm32_c = []
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
 [profile.bench]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-
-[profile.release]
 opt-level = 3
 debug = false
 rpath = false
