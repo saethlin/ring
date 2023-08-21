@@ -45,36 +45,6 @@ pub(crate) struct Template {
     pub private_key_index: usize,
 }
 
-impl Template {
-    #[inline]
-    fn alg_id_value(&self) -> untrusted::Input {
-        untrusted::Input::from(self.alg_id_value_())
-    }
-
-    fn alg_id_value_(&self) -> &[u8] {
-        &self.bytes[self.alg_id_range.start..self.alg_id_range.end]
-    }
-
-    #[inline]
-    pub fn curve_oid(&self) -> untrusted::Input {
-        untrusted::Input::from(&self.alg_id_value_()[self.curve_id_index..])
-    }
-}
-
-/// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
-/// of key, and returns the key value.
-///
-/// PKCS#8 is specified in [RFC 5958].
-///
-/// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
-pub(crate) fn unwrap_key<'a>(
-    template: &Template,
-    version: Version,
-    input: untrusted::Input<'a>,
-) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
-    unwrap_key_(template.alg_id_value(), version, input)
-}
-
 /// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
 /// of key, and returns the key value.
 ///
@@ -171,31 +141,4 @@ impl AsRef<[u8]> for Document {
     fn as_ref(&self) -> &[u8] {
         &self.bytes[..self.len]
     }
-}
-
-pub(crate) fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8]) -> Document {
-    let mut result = Document {
-        bytes: [0; ec::PKCS8_DOCUMENT_MAX_LEN],
-        len: template.bytes.len() + private_key.len() + public_key.len(),
-    };
-    wrap_key_(
-        template,
-        private_key,
-        public_key,
-        &mut result.bytes[..result.len],
-    );
-    result
-}
-
-/// Formats a private key "prefix||private_key||middle||public_key" where
-/// `template` is "prefix||middle" split at position `private_key_index`.
-fn wrap_key_(template: &Template, private_key: &[u8], public_key: &[u8], bytes: &mut [u8]) {
-    let (before_private_key, after_private_key) =
-        template.bytes.split_at(template.private_key_index);
-    let private_key_end_index = template.private_key_index + private_key.len();
-    bytes[..template.private_key_index].copy_from_slice(before_private_key);
-    bytes[template.private_key_index..private_key_end_index].copy_from_slice(&private_key);
-    bytes[private_key_end_index..(private_key_end_index + after_private_key.len())]
-        .copy_from_slice(after_private_key);
-    bytes[(private_key_end_index + after_private_key.len())..].copy_from_slice(public_key);
 }

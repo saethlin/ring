@@ -1,31 +1,5 @@
-// Copyright 2015-2019 Brian Smith.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-//! SHA-2 and the legacy SHA-1 digest algorithm.
-//!
-//! If all the data is available in a single contiguous slice then the `digest`
-//! function should be used. Otherwise, the digest can be calculated in
-//! multiple steps using `Context`.
-
-// Note on why are we doing things the hard way: It would be easy to implement
-// this using the C `EVP_MD`/`EVP_MD_CTX` interface. However, if we were to do
-// things that way, we'd have a hard dependency on `malloc` and other overhead.
-// The goal for this implementation is to drive the overhead as close to zero
-// as possible.
-
 use crate::{
-    c, cpu, debug,
+    c,
     endian::{self, BigEndian},
     polyfill,
 };
@@ -45,8 +19,6 @@ pub(crate) struct BlockContext {
 
     /// The context's algorithm.
     pub algorithm: &'static Algorithm,
-
-    cpu_features: cpu::Features,
 }
 
 impl BlockContext {
@@ -55,7 +27,6 @@ impl BlockContext {
             state: algorithm.initial_state,
             completed_data_blocks: 0,
             algorithm,
-            cpu_features: cpu::features(),
         }
     }
 
@@ -252,13 +223,6 @@ impl AsRef<[u8]> for Digest {
     }
 }
 
-impl core::fmt::Debug for Digest {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(fmt, "{:?}:", self.algorithm)?;
-        debug::write_hex_bytes(fmt, self.as_ref())
-    }
-}
-
 /// A digest algorithm.
 pub struct Algorithm {
     /// The length of a finalized digest.
@@ -292,7 +256,6 @@ enum AlgorithmID {
     SHA256,
     SHA384,
     SHA512,
-    SHA512_256,
 }
 
 impl PartialEq for Algorithm {
@@ -405,35 +368,6 @@ pub static SHA512: Algorithm = Algorithm {
     id: AlgorithmID::SHA512,
 };
 
-/// SHA-512/256 as specified in [FIPS 180-4].
-///
-/// This is *not* the same as just truncating the output of SHA-512, as
-/// SHA-512/256 has its own initial state distinct from SHA-512's initial
-/// state.
-///
-/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA512_256: Algorithm = Algorithm {
-    output_len: SHA512_256_OUTPUT_LEN,
-    chaining_len: SHA512_OUTPUT_LEN,
-    block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::GFp_sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0x22312194fc2bf72c),
-            Wrapping(0x9f555fa3c84c64c2),
-            Wrapping(0x2393b86b6f53b151),
-            Wrapping(0x963877195940eabd),
-            Wrapping(0x96283ee2a88effe3),
-            Wrapping(0xbe5e1e2553863992),
-            Wrapping(0x2b0199fc2c85b8aa),
-            Wrapping(0x0eb72ddc81c52ca2),
-        ],
-    },
-    id: AlgorithmID::SHA512_256,
-};
-
 #[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
 #[repr(C)]
 union State {
@@ -455,10 +389,6 @@ pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 /// The maximum output length (`Algorithm::output_len`) of all the algorithms
 /// in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
-
-/// The maximum chaining length (`Algorithm::chaining_len`) of all the
-/// algorithms in this module.
-pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
 fn sha256_format_output(input: State) -> Output {
     let input = unsafe { &input.as32 };
@@ -492,9 +422,6 @@ fn sha512_format_output(input: State) -> Output {
     }
 }
 
-/// The length of the output of SHA-1, in bytes.
-pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
-
 /// The length of the output of SHA-256, in bytes.
 pub const SHA256_OUTPUT_LEN: usize = 256 / 8;
 
@@ -504,91 +431,8 @@ pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
 /// The length of the output of SHA-512, in bytes.
 pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
 
-/// The length of the output of SHA-512/256, in bytes.
-pub const SHA512_256_OUTPUT_LEN: usize = 256 / 8;
-
 /// The length of a block for SHA-512-based algorithms, in bytes.
 const SHA512_BLOCK_LEN: usize = 1024 / 8;
 
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
-
-#[cfg(test)]
-mod tests {
-
-    mod max_input {
-        use super::super::super::digest;
-        use crate::polyfill;
-        use alloc::vec;
-
-        macro_rules! max_input_tests {
-            ( $algorithm_name:ident ) => {
-                mod $algorithm_name {
-                    use super::super::super::super::digest;
-
-                    #[test]
-                    fn max_input_test() {
-                        super::max_input_test(&digest::$algorithm_name);
-                    }
-
-                    #[test]
-                    #[should_panic]
-                    fn too_long_input_test_block() {
-                        super::too_long_input_test_block(&digest::$algorithm_name);
-                    }
-
-                    #[test]
-                    #[should_panic]
-                    fn too_long_input_test_byte() {
-                        super::too_long_input_test_byte(&digest::$algorithm_name);
-                    }
-                }
-            };
-        }
-
-        fn max_input_test(alg: &'static digest::Algorithm) {
-            let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len - 1];
-            context.update(&next_input);
-            let _ = context.finish(); // no panic
-        }
-
-        fn too_long_input_test_block(alg: &'static digest::Algorithm) {
-            let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len];
-            context.update(&next_input);
-            let _ = context.finish(); // should panic
-        }
-
-        fn too_long_input_test_byte(alg: &'static digest::Algorithm) {
-            let mut context = nearly_full_context(alg);
-            let next_input = vec![0u8; alg.block_len - 1];
-            context.update(&next_input); // no panic
-            context.update(&[0]);
-            let _ = context.finish(); // should panic
-        }
-
-        fn nearly_full_context(alg: &'static digest::Algorithm) -> digest::Context {
-            // All implementations currently support up to 2^64-1 bits
-            // of input; according to the spec, SHA-384 and SHA-512
-            // support up to 2^128-1, but that's not implemented yet.
-            let max_bytes = 1u64 << (64 - 3);
-            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
-            digest::Context {
-                block: digest::BlockContext {
-                    state: alg.initial_state,
-                    completed_data_blocks: max_blocks - 1,
-                    algorithm: alg,
-                    cpu_features: crate::cpu::features(),
-                },
-                pending: [0u8; digest::MAX_BLOCK_LEN],
-                num_pending: 0,
-            }
-        }
-
-        max_input_tests!(SHA1_FOR_LEGACY_USE_ONLY);
-        max_input_tests!(SHA256);
-        max_input_tests!(SHA384);
-        max_input_tests!(SHA512);
-    }
-}

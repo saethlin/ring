@@ -1,5 +1,5 @@
 use super::{Curve, ELEM_MAX_BYTES, SEED_MAX_BYTES};
-use crate::{cpu, error, rand};
+use crate::{error, rand};
 
 pub struct KeyPair {
     seed: Seed,
@@ -23,19 +23,16 @@ impl KeyPair {
 pub struct Seed {
     bytes: [u8; SEED_MAX_BYTES],
     curve: &'static Curve,
-    pub(crate) cpu_features: cpu::Features,
 }
 
 impl Seed {
     pub(crate) fn generate(
         curve: &'static Curve,
         rng: &dyn rand::SecureRandom,
-        cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self {
             bytes: [0u8; SEED_MAX_BYTES],
             curve,
-            cpu_features,
         };
         (curve.generate_private_key)(rng, &mut r.bytes[..curve.elem_scalar_seed_len])?;
         Ok(r)
@@ -44,7 +41,6 @@ impl Seed {
     pub(crate) fn from_bytes(
         curve: &'static Curve,
         bytes: untrusted::Input,
-        cpu_features: cpu::Features,
     ) -> Result<Seed, error::Unspecified> {
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_scalar_seed_len != bytes.len() {
@@ -54,7 +50,6 @@ impl Seed {
         let mut r = Self {
             bytes: [0; SEED_MAX_BYTES],
             curve,
-            cpu_features,
         };
         r.bytes[..curve.elem_scalar_seed_len].copy_from_slice(bytes);
         Ok(r)

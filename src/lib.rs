@@ -67,9 +67,6 @@
     non_snake_case,
     unsafe_code
 )]
-// `#[derive(...)]` uses `trivial_numeric_casts` and `unused_qualifications`
-// internally.
-#![deny(missing_docs, unused_qualifications, variant_size_differences)]
 #![forbid(unused_results)]
 #![no_std]
 
@@ -80,38 +77,28 @@ extern crate alloc;
 mod debug;
 
 #[macro_use]
-pub mod test;
-
-#[macro_use]
 mod arithmetic;
 
-#[macro_use]
 mod bssl;
 
-#[macro_use]
 mod polyfill;
-
-pub mod aead;
-pub mod agreement;
 
 mod bits;
 
-pub(crate) mod c;
-pub mod constant_time;
+mod c;
 
-pub mod io;
+mod io;
 
 mod cpu;
-pub mod digest;
+mod digest;
 mod ec;
 mod endian;
-pub mod error;
-pub mod hkdf;
-pub mod hmac;
+mod error;
+mod hkdf;
+mod hmac;
 mod limb;
-pub mod pbkdf2;
-pub mod pkcs8;
-pub mod rand;
+mod pkcs8;
+mod rand;
 
 #[cfg(feature = "alloc")]
 mod rsa;

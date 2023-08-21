@@ -20,10 +20,6 @@ pub const fn u64_from_usize(x: usize) -> u64 {
     x as u64
 }
 
-pub fn usize_from_u32(x: u32) -> usize {
-    x as usize
-}
-
 pub mod slice {
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868

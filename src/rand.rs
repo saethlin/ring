@@ -43,33 +43,6 @@ where
     }
 }
 
-/// A random value constructed from a `SecureRandom` that hasn't been exposed
-/// through any safe Rust interface.
-///
-/// Intentionally does not implement any traits other than `Sized`.
-pub struct Random<T: RandomlyConstructable>(T);
-
-impl<T: RandomlyConstructable> Random<T> {
-    /// Expose the random value.
-    #[inline]
-    pub fn expose(self) -> T {
-        self.0
-    }
-}
-
-/// Generate the new random value using `rng`.
-#[inline]
-pub fn generate<T: RandomlyConstructable>(
-    rng: &dyn SecureRandom,
-) -> Result<Random<T>, error::Unspecified>
-where
-    T: RandomlyConstructable,
-{
-    let mut r = T::zero();
-    rng.fill(r.as_mut_bytes())?;
-    Ok(Random(r))
-}
-
 pub(crate) mod sealed {
     use crate::error;
 
@@ -145,14 +118,6 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
 #[derive(Clone, Debug)]
 pub struct SystemRandom(());
-
-impl SystemRandom {
-    /// Constructs a new `SystemRandom`.
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self(())
-    }
-}
 
 impl sealed::SecureRandom for SystemRandom {
     #[inline(always)]
