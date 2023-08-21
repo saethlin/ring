@@ -73,9 +73,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-mod arithmetic;
 mod bits;
-mod bssl;
 mod c;
 mod cpu;
 mod digest;
@@ -86,7 +84,6 @@ mod hmac;
 mod limb;
 mod polyfill;
 mod rand;
-mod rsa;
 
 pub static MYALGORITHM: &'static digest::MyAlgorithm = &digest::MYSHA256;
 

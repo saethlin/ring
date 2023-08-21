@@ -17,10 +17,3 @@
 // naming conventions. Also the standard camelCase names are used for `KeyPair`
 // components.
 
-/// RSA signatures.
-use crate::{arithmetic::bigint, limb};
-
-pub mod padding;
-
-// Maximum RSA modulus size supported for signature verification (in bytes).
-const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
