@@ -61,8 +61,8 @@ pub trait Verification: Padding {
 /// [RFC 3447 Section 8.2]: https://tools.ietf.org/html/rfc3447#section-8.2
 #[derive(Debug)]
 pub struct PKCS1 {
-    digest_alg: &'static digest::Algorithm,
-    digestinfo_prefix: &'static [u8],
+    pub digest_alg: &'static digest::Algorithm,
+    pub digestinfo_prefix: &'static [u8],
 }
 
 impl crate::sealed::Sealed for PKCS1 {}
@@ -142,35 +142,10 @@ macro_rules! rsa_pkcs1_padding {
     };
 }
 
-rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
-    &digest::SHA1_FOR_LEGACY_USE_ONLY,
-    &SHA1_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-1 for RSA signatures."
-);
-rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA256,
-    &digest::SHA256,
-    &SHA256_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-256 for RSA signatures."
-);
-rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA384,
-    &digest::SHA384,
-    &SHA384_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-384 for RSA signatures."
-);
-rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA512,
-    &digest::SHA512,
-    &SHA512_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-512 for RSA signatures."
-);
-
 macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
       [ $( $digest_oid:expr ),* ] ) => {
-        static $name: [u8; 2 + 8 + $digest_oid_len] = [
+        pub static $name: [u8; 2 + 8 + $digest_oid_len] = [
             der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
                 der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
                     der::Tag::OID as u8, $digest_oid_len, $( $digest_oid ),*,
@@ -179,34 +154,6 @@ macro_rules! pkcs1_digestinfo_prefix {
         ];
     }
 }
-
-pkcs1_digestinfo_prefix!(
-    SHA1_PKCS1_DIGESTINFO_PREFIX,
-    20,
-    5,
-    [0x2b, 0x0e, 0x03, 0x02, 0x1a]
-);
-
-pkcs1_digestinfo_prefix!(
-    SHA256_PKCS1_DIGESTINFO_PREFIX,
-    32,
-    9,
-    [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01]
-);
-
-pkcs1_digestinfo_prefix!(
-    SHA384_PKCS1_DIGESTINFO_PREFIX,
-    48,
-    9,
-    [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02]
-);
-
-pkcs1_digestinfo_prefix!(
-    SHA512_PKCS1_DIGESTINFO_PREFIX,
-    64,
-    9,
-    [0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03]
-);
 
 /// RSA PSS padding as described in [RFC 3447 Section 8.1].
 ///
@@ -492,110 +439,4 @@ macro_rules! rsa_pss_padding {
             digest_alg: $digest_alg,
         };
     };
-}
-
-rsa_pss_padding!(
-    RSA_PSS_SHA256,
-    &digest::SHA256,
-    "RSA PSS padding using SHA-256 for RSA signatures.\n\nSee
-                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
-                 documentation for more details."
-);
-rsa_pss_padding!(
-    RSA_PSS_SHA384,
-    &digest::SHA384,
-    "RSA PSS padding using SHA-384 for RSA signatures.\n\nSee
-                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
-                 documentation for more details."
-);
-rsa_pss_padding!(
-    RSA_PSS_SHA512,
-    &digest::SHA512,
-    "RSA PSS padding using SHA-512 for RSA signatures.\n\nSee
-                 \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
-                 documentation for more details."
-);
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::{digest, error, test};
-    use alloc::vec;
-
-    #[test]
-    fn test_pss_padding_verify() {
-        test::run(
-            test_file!("rsa_pss_padding_tests.txt"),
-            |section, test_case| {
-                assert_eq!(section, "");
-
-                let digest_name = test_case.consume_string("Digest");
-                let alg = match digest_name.as_ref() {
-                    "SHA256" => &RSA_PSS_SHA256,
-                    "SHA384" => &RSA_PSS_SHA384,
-                    "SHA512" => &RSA_PSS_SHA512,
-                    _ => panic!("Unsupported digest: {}", digest_name),
-                };
-
-                let msg = test_case.consume_bytes("Msg");
-                let msg = untrusted::Input::from(&msg);
-                let m_hash = digest::digest(alg.digest_alg(), msg.as_slice_less_safe());
-
-                let encoded = test_case.consume_bytes("EM");
-                let encoded = untrusted::Input::from(&encoded);
-
-                // Salt is recomputed in verification algorithm.
-                let _ = test_case.consume_bytes("Salt");
-
-                let bit_len = test_case.consume_usize_bits("Len");
-                let is_valid = test_case.consume_string("Result") == "P";
-
-                let actual_result =
-                    encoded.read_all(error::Unspecified, |m| alg.verify(&m_hash, m, bit_len));
-                assert_eq!(actual_result.is_ok(), is_valid);
-
-                Ok(())
-            },
-        );
-    }
-
-    // Tests PSS encoding for various public modulus lengths.
-    #[cfg(feature = "alloc")]
-    #[test]
-    fn test_pss_padding_encode() {
-        test::run(
-            test_file!("rsa_pss_padding_tests.txt"),
-            |section, test_case| {
-                assert_eq!(section, "");
-
-                let digest_name = test_case.consume_string("Digest");
-                let alg = match digest_name.as_ref() {
-                    "SHA256" => &RSA_PSS_SHA256,
-                    "SHA384" => &RSA_PSS_SHA384,
-                    "SHA512" => &RSA_PSS_SHA512,
-                    _ => panic!("Unsupported digest: {}", digest_name),
-                };
-
-                let msg = test_case.consume_bytes("Msg");
-                let salt = test_case.consume_bytes("Salt");
-                let encoded = test_case.consume_bytes("EM");
-                let bit_len = test_case.consume_usize_bits("Len");
-                let expected_result = test_case.consume_string("Result");
-
-                // Only test the valid outputs
-                if expected_result != "P" {
-                    return Ok(());
-                }
-
-                let rng = test::rand::FixedSliceRandom { bytes: &salt };
-
-                let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
-                let digest = digest::digest(alg.digest_alg(), &msg);
-                alg.encode(&digest, &mut m_out, bit_len, &rng).unwrap();
-                assert_eq!(m_out, encoded);
-
-                Ok(())
-            },
-        );
-    }
 }

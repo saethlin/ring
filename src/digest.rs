@@ -318,6 +318,15 @@ pub static SHA256: Algorithm = Algorithm {
     id: AlgorithmID::SHA256,
 };
 
+pub struct MyAlgorithm {
+    #[allow(unused)] // required
+    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
+}
+
+pub static MYSHA256: MyAlgorithm = MyAlgorithm {
+    block_data_order: sha2::GFp_sha256_block_data_order,
+};
+
 /// SHA-384 as specified in [FIPS 180-4].
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
@@ -370,7 +379,7 @@ pub static SHA512: Algorithm = Algorithm {
 
 #[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
 #[repr(C)]
-union State {
+pub union State {
     as64: [Wrapping<u64>; sha2::CHAINING_WORDS],
     as32: [Wrapping<u32>; sha2::CHAINING_WORDS],
 }

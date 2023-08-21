@@ -79,8 +79,6 @@ impl<M> DerefMut for BoxedLimbs<M> {
     }
 }
 
-// TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
-// is resolved or restrict `M: Clone`.
 impl<M> Clone for BoxedLimbs<M> {
     fn clone(&self) -> Self {
         Self {
@@ -230,23 +228,6 @@ impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
 }
 
 impl<M> Modulus<M> {
-    pub fn from_be_bytes_with_bit_length(
-        input: untrusted::Input,
-    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
-        let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        Self::from_boxed_limbs(limbs)
-    }
-
-    pub fn from_nonnegative_with_bit_length(
-        n: Nonnegative,
-    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
-        let limbs = BoxedLimbs {
-            limbs: n.limbs.into_boxed_slice(),
-            m: PhantomData,
-        };
-        Self::from_boxed_limbs(limbs)
-    }
-
     fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
@@ -325,22 +306,6 @@ impl<M> Modulus<M> {
         &self.oneRR
     }
 
-    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
-    where
-        M: SmallerModulus<L>,
-    {
-        // TODO: Encode this assertion into the `where` above.
-        assert_eq!(self.width().num_limbs, l.width().num_limbs);
-        let limbs = self.limbs.clone();
-        Elem {
-            limbs: BoxedLimbs {
-                limbs: limbs.limbs,
-                m: PhantomData,
-            },
-            encoding: PhantomData,
-        }
-    }
-
     fn as_partial(&self) -> PartialModulus<M> {
         PartialModulus {
             limbs: &self.limbs,
@@ -394,13 +359,6 @@ impl<M, E> Clone for Elem<M, E> {
     }
 }
 
-impl<M, E> Elem<M, E> {
-    #[inline]
-    pub fn is_zero(&self) -> bool {
-        self.limbs.is_zero()
-    }
-}
-
 impl<M, E: ReductionEncoding> Elem<M, E> {
     fn decode_once(self, m: &Modulus<M>) -> Elem<M, <E as ReductionEncoding>::Output> {
         // A multiplication isn't required since we're multiplying by the
@@ -428,28 +386,6 @@ impl<M> Elem<M, R> {
 }
 
 impl<M> Elem<M, Unencoded> {
-    pub fn from_be_bytes_padded(
-        input: untrusted::Input,
-        m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        Ok(Elem {
-            limbs: BoxedLimbs::from_be_bytes_padded_less_than(input, m)?,
-            encoding: PhantomData,
-        })
-    }
-
-    #[inline]
-    pub fn fill_be_bytes(&self, out: &mut [u8]) {
-        // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
-        limb::big_endian_from_limbs(&self.limbs, out)
-    }
-
-    pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::KeyRejected> {
-        let (m, _bits) =
-            Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))?;
-        Ok(m)
-    }
-
     fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
@@ -495,36 +431,6 @@ fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
     }
 }
 
-pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
-    a: &Elem<Larger, Unencoded>,
-    m: &Modulus<Smaller>,
-) -> Elem<Smaller, Unencoded> {
-    let mut r = a.limbs.clone();
-    assert!(r.len() <= m.limbs.len());
-    limb::limbs_reduce_once_constant_time(&mut r, &m.limbs);
-    Elem {
-        limbs: BoxedLimbs {
-            limbs: r.limbs,
-            m: PhantomData,
-        },
-        encoding: PhantomData,
-    }
-}
-
-#[inline]
-pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
-    a: &Elem<Larger, Unencoded>,
-    m: &Modulus<Smaller>,
-) -> Elem<Smaller, RInverse> {
-    let mut tmp = [0; MODULUS_MAX_LIMBS];
-    let tmp = &mut tmp[..a.limbs.len()];
-    tmp.copy_from_slice(&a.limbs);
-
-    let mut r = m.zero();
-    limbs_from_mont_in_place(&mut r.limbs, tmp, &m.limbs, &m.n0);
-    r
-}
-
 fn elem_squared<M, E>(
     mut a: Elem<M, E>,
     m: &PartialModulus<M>,
@@ -537,15 +443,6 @@ where
         limbs: a.limbs,
         encoding: PhantomData,
     }
-}
-
-pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
-    a: Elem<Smaller, Unencoded>,
-    m: &Modulus<Larger>,
-) -> Elem<Larger, Unencoded> {
-    let mut r = m.zero();
-    r.limbs[..a.limbs.len()].copy_from_slice(&a.limbs);
-    r
 }
 
 // TODO: Document why this works for all Montgomery factors.
@@ -718,18 +615,6 @@ impl PublicExponent {
 // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
 // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
 const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
-
-/// Calculates base**exponent (mod m).
-// TODO: The test coverage needs to be expanded, e.g. test with the largest
-// accepted exponent and with the most common values of 65537 and 3.
-pub fn elem_exp_vartime<M>(
-    base: Elem<M, Unencoded>,
-    PublicExponent(exponent): PublicExponent,
-    m: &Modulus<M>,
-) -> Elem<M, R> {
-    let base = elem_mul(m.oneRR().as_ref(), base, &m);
-    elem_exp_vartime_(base, exponent, &m.as_partial())
-}
 
 /// Calculates base**exponent (mod m).
 fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) -> Elem<M, R> {
@@ -1095,31 +980,6 @@ pub fn elem_exp_consttime<M>(
     };
     r.limbs.copy_from_slice(entry(state, ACC, num_limbs));
     Ok(r)
-}
-
-/// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
-pub fn verify_inverses_consttime<M>(
-    a: &Elem<M, R>,
-    b: Elem<M, Unencoded>,
-    m: &Modulus<M>,
-) -> Result<(), error::Unspecified> {
-    if elem_mul(a, b, m).is_one() {
-        Ok(())
-    } else {
-        Err(error::Unspecified)
-    }
-}
-
-#[inline]
-pub fn elem_verify_equal_consttime<M, E>(
-    a: &Elem<M, E>,
-    b: &Elem<M, E>,
-) -> Result<(), error::Unspecified> {
-    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs) == LimbMask::True {
-        Ok(())
-    } else {
-        Err(error::Unspecified)
-    }
 }
 
 /// Nonnegative integers.

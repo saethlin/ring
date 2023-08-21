@@ -15,7 +15,7 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 use self::ops::*;
-use crate::{arithmetic::montgomery::*, ec, error, io::der, limb::LimbMask, pkcs8};
+use crate::{arithmetic::montgomery::*, error, limb::LimbMask};
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
 // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed modulo
@@ -151,23 +151,6 @@ fn verify_affine_point_is_on_the_curve_scaled(
     }
 
     Ok(())
-}
-
-pub(crate) fn key_pair_from_bytes(
-    curve: &'static ec::Curve,
-    private_key_bytes: untrusted::Input,
-    public_key_bytes: untrusted::Input,
-) -> Result<ec::KeyPair, error::KeyRejected> {
-    let seed = ec::Seed::from_bytes(curve, private_key_bytes)
-        .map_err(|error::Unspecified| error::KeyRejected::invalid_component())?;
-
-    let r = ec::KeyPair::derive(seed)
-        .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-    if public_key_bytes != *r.public_key().as_ref() {
-        return Err(error::KeyRejected::inconsistent_components());
-    }
-
-    Ok(r)
 }
 
 mod curve;

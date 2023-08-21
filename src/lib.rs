@@ -76,7 +76,6 @@ extern crate alloc;
 #[macro_use]
 mod debug;
 
-#[macro_use]
 mod arithmetic;
 
 mod bssl;
@@ -103,7 +102,29 @@ mod rand;
 #[cfg(feature = "alloc")]
 mod rsa;
 
-pub mod signature;
+mod signature;
+
+//pub static ALGORITHM: &'static digest::Algorithm = &digest::SHA256;
+pub static MYALGORITHM: &'static digest::MyAlgorithm = &digest::MYSHA256;
+
+/*
+mod inner {
+extern "C" {
+    fn MyExampleFunction(state: &mut crate::digest::State, data: *const u8, num: crate::c::size_t);
+}
+
+pub struct MyAlgorithm {
+    inner: unsafe extern "C" fn(state: &mut crate::digest::State, data: *const u8, num: crate::c::size_t),
+}
+
+pub static MYSHA256: MyAlgorithm = MyAlgorithm {
+    inner: MyExampleFunction,
+};
+}
+
+pub static DEMO: &'static inner::MyAlgorithm = &inner::MYSHA256;
+*/
+
 
 mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.

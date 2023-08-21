@@ -25,7 +25,7 @@ use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
 use core::ops::RangeFrom;
 
-pub use self::{
+use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
     chacha20_poly1305::CHACHA20_POLY1305,
     nonce::{Nonce, NONCE_LEN},

@@ -1,35 +1,5 @@
 use crate::{cpu, ec, error, sealed};
 
-#[cfg(feature = "alloc")]
-pub use crate::rsa::{
-    signing::RsaKeyPair,
-    signing::RsaSubjectPublicKey,
-
-    verification::{
-        RsaPublicKeyComponents, RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
-        RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
-        RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
-        RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY, RSA_PKCS1_2048_8192_SHA256,
-        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
-        RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
-    },
-
-    RsaEncoding,
-    RsaParameters,
-
-    // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
-    // to create test vectors for signing with it, which we don't currently
-    // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
-    // ever expose it.
-    RSA_PKCS1_SHA256,
-    RSA_PKCS1_SHA384,
-    RSA_PKCS1_SHA512,
-
-    RSA_PSS_SHA256,
-    RSA_PSS_SHA384,
-    RSA_PSS_SHA512,
-};
-
 /// A public key signature returned from a signing operation.
 #[derive(Clone, Copy)]
 pub struct Signature {
@@ -88,28 +58,5 @@ where
             algorithm: self.algorithm,
             bytes: self.bytes.clone(),
         }
-    }
-}
-
-impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
-    /// Construct a new `UnparsedPublicKey`.
-    ///
-    /// No validation of `bytes` is done until `verify()` is called.
-    #[inline]
-    pub fn new(algorithm: &'static dyn VerificationAlgorithm, bytes: B) -> Self {
-        Self { algorithm, bytes }
-    }
-
-    /// Parses the public key and verifies `signature` is a valid signature of
-    /// `message` using it.
-    ///
-    /// See the [crate::signature] module-level documentation for examples.
-    pub fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), error::Unspecified> {
-        let _ = cpu::features();
-        self.algorithm.verify(
-            untrusted::Input::from(self.bytes.as_ref()),
-            untrusted::Input::from(message),
-            untrusted::Input::from(signature),
-        )
     }
 }

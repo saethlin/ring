@@ -14,8 +14,7 @@
 
 //! Serialization and deserialization.
 
-#[doc(hidden)]
-pub mod der;
+pub(crate) mod der;
 
 #[cfg(feature = "alloc")]
 mod writer;
@@ -25,4 +24,4 @@ pub(crate) mod der_writer;
 
 pub(crate) mod positive;
 
-pub use self::positive::Positive;
+pub(crate) use self::positive::Positive;
