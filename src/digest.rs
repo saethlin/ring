@@ -5,8 +5,33 @@ use crate::{
 };
 use core::num::Wrapping;
 
-mod sha1;
-mod sha2;
+pub mod sha2 {
+	use crate::c;
+
+	pub(super) const CHAINING_WORDS: usize = 8;
+
+	#[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
+	extern "C" {
+	    pub(super) fn GFp_sha256_block_data_order(
+		state: &mut super::State,
+		data: *const u8,
+		num: c::size_t,
+	    );
+	    pub(super) fn GFp_sha512_block_data_order(
+		state: &mut super::State,
+		data: *const u8,
+		num: c::size_t,
+	    );
+	}
+}
+
+pub struct MyAlgorithm {
+    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
+}
+
+pub static MYSHA256: MyAlgorithm = MyAlgorithm {
+    block_data_order: sha2::GFp_sha256_block_data_order,
+};
 
 #[derive(Clone)]
 pub(crate) struct BlockContext {
@@ -207,14 +232,6 @@ pub struct Digest {
     algorithm: &'static Algorithm,
 }
 
-impl Digest {
-    /// The algorithm that was used to calculate the digest value.
-    #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm {
-        self.algorithm
-    }
-}
-
 impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
@@ -246,136 +263,15 @@ pub struct Algorithm {
     format_output: fn(input: State) -> Output,
 
     initial_state: State,
-
-    id: AlgorithmID,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-enum AlgorithmID {
-    SHA1,
-    SHA256,
-    SHA384,
-    SHA512,
 }
 
 impl PartialEq for Algorithm {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+	true
     }
 }
 
 impl Eq for Algorithm {}
-
-derive_debug_via_id!(Algorithm);
-
-/// SHA-1 as specified in [FIPS 180-4]. Deprecated.
-///
-/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
-    output_len: sha1::OUTPUT_LEN,
-    chaining_len: sha1::CHAINING_LEN,
-    block_len: sha1::BLOCK_LEN,
-    len_len: 64 / 8,
-    block_data_order: sha1::block_data_order,
-    format_output: sha256_format_output,
-    initial_state: State {
-        as32: [
-            Wrapping(0x67452301u32),
-            Wrapping(0xefcdab89u32),
-            Wrapping(0x98badcfeu32),
-            Wrapping(0x10325476u32),
-            Wrapping(0xc3d2e1f0u32),
-            Wrapping(0),
-            Wrapping(0),
-            Wrapping(0),
-        ],
-    },
-    id: AlgorithmID::SHA1,
-};
-
-/// SHA-256 as specified in [FIPS 180-4].
-///
-/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA256: Algorithm = Algorithm {
-    output_len: SHA256_OUTPUT_LEN,
-    chaining_len: SHA256_OUTPUT_LEN,
-    block_len: 512 / 8,
-    len_len: 64 / 8,
-    block_data_order: sha2::GFp_sha256_block_data_order,
-    format_output: sha256_format_output,
-    initial_state: State {
-        as32: [
-            Wrapping(0x6a09e667u32),
-            Wrapping(0xbb67ae85u32),
-            Wrapping(0x3c6ef372u32),
-            Wrapping(0xa54ff53au32),
-            Wrapping(0x510e527fu32),
-            Wrapping(0x9b05688cu32),
-            Wrapping(0x1f83d9abu32),
-            Wrapping(0x5be0cd19u32),
-        ],
-    },
-    id: AlgorithmID::SHA256,
-};
-
-pub struct MyAlgorithm {
-    #[allow(unused)] // required
-    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
-}
-
-pub static MYSHA256: MyAlgorithm = MyAlgorithm {
-    block_data_order: sha2::GFp_sha256_block_data_order,
-};
-
-/// SHA-384 as specified in [FIPS 180-4].
-///
-/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA384: Algorithm = Algorithm {
-    output_len: SHA384_OUTPUT_LEN,
-    chaining_len: SHA512_OUTPUT_LEN,
-    block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::GFp_sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0xcbbb9d5dc1059ed8),
-            Wrapping(0x629a292a367cd507),
-            Wrapping(0x9159015a3070dd17),
-            Wrapping(0x152fecd8f70e5939),
-            Wrapping(0x67332667ffc00b31),
-            Wrapping(0x8eb44a8768581511),
-            Wrapping(0xdb0c2e0d64f98fa7),
-            Wrapping(0x47b5481dbefa4fa4),
-        ],
-    },
-    id: AlgorithmID::SHA384,
-};
-
-/// SHA-512 as specified in [FIPS 180-4].
-///
-/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA512: Algorithm = Algorithm {
-    output_len: SHA512_OUTPUT_LEN,
-    chaining_len: SHA512_OUTPUT_LEN,
-    block_len: SHA512_BLOCK_LEN,
-    len_len: SHA512_LEN_LEN,
-    block_data_order: sha2::GFp_sha512_block_data_order,
-    format_output: sha512_format_output,
-    initial_state: State {
-        as64: [
-            Wrapping(0x6a09e667f3bcc908),
-            Wrapping(0xbb67ae8584caa73b),
-            Wrapping(0x3c6ef372fe94f82b),
-            Wrapping(0xa54ff53a5f1d36f1),
-            Wrapping(0x510e527fade682d1),
-            Wrapping(0x9b05688c2b3e6c1f),
-            Wrapping(0x1f83d9abfb41bd6b),
-            Wrapping(0x5be0cd19137e2179),
-        ],
-    },
-    id: AlgorithmID::SHA512,
-};
 
 #[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
 #[repr(C)]
@@ -398,50 +294,3 @@ pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 /// The maximum output length (`Algorithm::output_len`) of all the algorithms
 /// in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
-
-fn sha256_format_output(input: State) -> Output {
-    let input = unsafe { &input.as32 };
-    Output {
-        as32: [
-            BigEndian::from(input[0]),
-            BigEndian::from(input[1]),
-            BigEndian::from(input[2]),
-            BigEndian::from(input[3]),
-            BigEndian::from(input[4]),
-            BigEndian::from(input[5]),
-            BigEndian::from(input[6]),
-            BigEndian::from(input[7]),
-        ],
-    }
-}
-
-fn sha512_format_output(input: State) -> Output {
-    let input = unsafe { &input.as64 };
-    Output {
-        as64: [
-            BigEndian::from(input[0]),
-            BigEndian::from(input[1]),
-            BigEndian::from(input[2]),
-            BigEndian::from(input[3]),
-            BigEndian::from(input[4]),
-            BigEndian::from(input[5]),
-            BigEndian::from(input[6]),
-            BigEndian::from(input[7]),
-        ],
-    }
-}
-
-/// The length of the output of SHA-256, in bytes.
-pub const SHA256_OUTPUT_LEN: usize = 256 / 8;
-
-/// The length of the output of SHA-384, in bytes.
-pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
-
-/// The length of the output of SHA-512, in bytes.
-pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
-
-/// The length of a block for SHA-512-based algorithms, in bytes.
-const SHA512_BLOCK_LEN: usize = 1024 / 8;
-
-/// The length of the length field for SHA-512-based algorithms, in bytes.
-const SHA512_LEN_LEN: usize = 128 / 8;

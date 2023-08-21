@@ -29,14 +29,6 @@ pub struct Key {
     outer: digest::BlockContext,
 }
 
-impl core::fmt::Debug for Key {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("Key")
-            .field("algorithm", self.algorithm().digest_algorithm())
-            .finish()
-    }
-}
-
 impl Key {
     fn construct<F>(algorithm: Algorithm, fill: F) -> Result<Self, error::Unspecified>
     where
@@ -133,14 +125,6 @@ impl From<hkdf::Okm<'_, Algorithm>> for Key {
 pub struct Context {
     inner: digest::Context,
     outer: digest::BlockContext,
-}
-
-impl core::fmt::Debug for Context {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("Context")
-            .field("algorithm", self.inner.algorithm())
-            .finish()
-    }
 }
 
 impl Context {

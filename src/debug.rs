@@ -24,22 +24,6 @@ macro_rules! derive_debug_via_id {
     };
 }
 
-macro_rules! derive_debug_via_field {
-    ($type:ty, $field:ident) => {
-        derive_debug_via_field!($type, stringify!($type), $field);
-    };
-
-    ($type:ty, $typename:expr, $field:ident) => {
-        impl ::core::fmt::Debug for $type {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
-                f.debug_struct($typename)
-                    .field(stringify!($field), &self.$field)
-                    .finish()
-            }
-        }
-    };
-}
-
 // Generates an implementation of the Debug trait for a type that outputs the
 // hex encoding of the byte slice representation of the value.
 macro_rules! derive_debug_self_as_ref_hex_bytes {

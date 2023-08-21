@@ -77,38 +77,24 @@ extern crate alloc;
 mod debug;
 
 mod arithmetic;
-
 mod bssl;
-
 mod polyfill;
-
 mod bits;
-
 mod c;
-
 mod io;
-
 mod cpu;
 mod digest;
-mod ec;
 mod endian;
 mod error;
 mod hkdf;
 mod hmac;
 mod limb;
-mod pkcs8;
 mod rand;
-
-#[cfg(feature = "alloc")]
 mod rsa;
 
-mod signature;
-
-//pub static ALGORITHM: &'static digest::Algorithm = &digest::SHA256;
 pub static MYALGORITHM: &'static digest::MyAlgorithm = &digest::MYSHA256;
 
 /*
-mod inner {
 extern "C" {
     fn MyExampleFunction(state: &mut crate::digest::State, data: *const u8, num: crate::c::size_t);
 }
@@ -120,7 +106,6 @@ pub struct MyAlgorithm {
 pub static MYSHA256: MyAlgorithm = MyAlgorithm {
     inner: MyExampleFunction,
 };
-}
 
 pub static DEMO: &'static inner::MyAlgorithm = &inner::MYSHA256;
 */
