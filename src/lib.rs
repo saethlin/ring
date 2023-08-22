@@ -1,24 +1,18 @@
-pub struct MyAlgorithm {
-    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: usize),
-}
-
-#[repr(C)]
-union State {
-    as64: [u64; 8],
-    as32: [u32; 8],
+pub struct FnWrapper {
+    inner: unsafe extern "C" fn(),
 }
 
 extern "C" {
-    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: usize);
+    fn GFp_sha256_block_data_order();
 }
 
 mod digest {
-    pub static MYSHA256: super::MyAlgorithm = super::MyAlgorithm {
-        block_data_order: super::GFp_sha256_block_data_order,
+    pub static WRAPPER: super::FnWrapper = super::FnWrapper {
+        inner: super::GFp_sha256_block_data_order,
     };
 }
 
-pub static MYALGORITHM: &'static MyAlgorithm = &digest::MYSHA256;
+pub static WRAPPER_REF: &'static FnWrapper = &digest::WRAPPER;
 
 #[no_mangle]
 static mut GFp_armcap_P: u32 = 0;
