@@ -168,7 +168,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "-Wenum-compare",
             "-Wfloat-equal",
             "-Wformat=2",
-            "-Winline",
             "-Winvalid-pch",
             "-Wmissing-field-initializers",
             "-Wmissing-include-dirs",
