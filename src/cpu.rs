@@ -284,8 +284,9 @@ pub(crate) mod arm {
     // TODO: This should have "hidden" visibility but we don't have a way of
     // controlling that yet: https://github.com/rust-lang/rust/issues/73958.
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    #[no_mangle]
-    static mut GFp_armcap_P: u32 = ARMCAP_STATIC;
+    extern "C" {
+        static mut GFp_armcap_P: u32;
+    }
 
     #[cfg(all(
         any(target_arch = "arm", target_arch = "aarch64"),

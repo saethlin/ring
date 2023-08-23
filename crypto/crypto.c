@@ -36,3 +36,7 @@
 // affected.
 HIDDEN uint32_t GFp_ia32cap_P[4] = {0};
 #endif
+
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+HIDDEN uint32_t GFp_armcap_P = 0;
+#endif
