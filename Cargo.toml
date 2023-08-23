@@ -18,6 +18,3 @@ links = "ring-asm"
 [lib]
 name = "ring"
 crate-type = ["cdylib"]
-
-[build-dependencies]
-cc = { version = "1.0.62", default-features = false }
