@@ -17,4 +17,4 @@ links = "ring-asm"
 
 [lib]
 name = "ring"
-crate-type = ["cdylib"]
+crate-type = ["lib", "cdylib"]
